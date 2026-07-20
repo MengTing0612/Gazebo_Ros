@@ -1,0 +1,80 @@
+# PX4 SITL-only defaults.  This is deliberately conservative so PX4's native
+# multicopter position controller remains responsible for the hover baseline.
+sdk:
+  host: "127.0.0.1"
+  port: 9000
+  # Transport timeout. Inference runs on a worker thread; control output still
+  # falls back when the separate 200 ms freshness gate expires.
+  timeout_ms: 10000
+
+control:
+  mode: "velocity"
+  residual_lambda: 0.02
+  frequency_hz: 20.0
+
+limits_sim:
+  vx_max: 0.20
+  vy_max: 0.20
+  vz_max: 0.10
+  yaw_rate_max_deg: 6.0
+  roll_max_deg: 3.0
+  pitch_max_deg: 3.0
+
+limits_real:
+  vx_max: 0.10
+  vy_max: 0.10
+  vz_max: 0.05
+  yaw_rate_max_deg: 3.0
+  roll_max_deg: 2.0
+  pitch_max_deg: 2.0
+
+filter:
+  alpha: 0.3
+  deadband_u: 0.01
+  deadband_v: 0.01
+
+safety:
+  enable_action_check: true
+  enable_timeout_fallback: true
+  enable_manual_override: true
+  fallback_mode: "hover"
+  sdk_timeout_ms: 200
+  state_age_max_ms: 200
+  vx_rate_limit: 0.20
+  vy_rate_limit: 0.20
+  vz_rate_limit: 0.10
+  yaw_rate_rate_limit: 10.0
+
+feedback:
+  mode: "reward_01"
+  neutral_value: 0.5
+  terminal_value: 0.0
+  startup_warmup_frames: 10
+  feedback_amplitude: 0.45
+  improvement_scale: 0.04
+  cost_scale: 0.65
+  improvement_weight: 0.10
+  cost_filter_alpha: 0.35
+  xy_scale_m: 2.0
+  z_scale_m: 1.0
+  vxy_scale_mps: 0.8
+  vz_scale_mps: 0.5
+  tilt_scale_deg: 25.0
+  rate_scale_degps: 180.0
+  yaw_scale_deg: 30.0
+  xy_weight: 0.30
+  z_weight: 0.30
+  vxy_weight: 0.20
+  vz_weight: 0.20
+  tilt_weight: 0.16
+  rate_weight: 0.05
+  yaw_weight: 0.02
+  command_weight: 0.03
+  saturation_weight: 0.12
+  safety_weight: 0.25
+
+copter:
+  hover_throttle: 500
+  throttle_mid: 500
+  throttle_min: 130
+  throttle_max: 1000

@@ -1,0 +1,120 @@
+# Stabilize-AI SDK Drone Control Configuration
+# =============================================
+# Single source of truth for all control parameters.
+# Sim vs real limits are both defined here; select with `use_real: true` at load time.
+#
+# See: docs/stabilize_ai_sdk_drone_control_design.md
+
+sdk:
+  host: "127.0.0.1"
+  port: 9000
+  timeout_ms: 100
+
+control:
+  mode: "velocity"        # "velocity" | "attitude" | "motor"
+  residual_lambda: 0.03   # SDK residual weight; keep small until action10 mapping is verified
+  frequency_hz: 20        # control loop rate
+
+# Simulation limits (X3 model — per design doc §8.1)
+limits_sim:
+  vx_max: 0.30            # m/s
+  vy_max: 0.30
+  vz_max: 0.20
+  yaw_rate_max_deg: 10.0
+  roll_max_deg: 5.0
+  pitch_max_deg: 5.0
+
+# Real drone limits (tighter — per design doc §8.1, §11.2)
+limits_real:
+  vx_max: 0.15
+  vy_max: 0.15
+  vz_max: 0.10
+  yaw_rate_max_deg: 5.0
+  roll_max_deg: 3.0
+  pitch_max_deg: 3.0
+
+# Low-pass filter and deadband (§9.2, §9.3)
+filter:
+  alpha: 0.3              # low-pass filter coefficient
+  deadband_u: 0.01        # lateral deadband (m/s, below this command is zeroed)
+  deadband_v: 0.01        # vertical deadband (m/s)
+
+# Safety parameters (§9.4, §9.5)
+safety:
+  enable_action_check: true
+  enable_timeout_fallback: true
+  enable_manual_override: true
+  fallback_mode: "hover"  # "hover" | "loiter" | "stabilize"
+  sdk_timeout_ms: 200     # max SDK inference latency before fallback
+  state_age_max_ms: 200   # max state age before discarding action
+
+  # Rate-of-change limits (per §9.5)
+  vx_rate_limit: 0.30     # m/s^2
+  vy_rate_limit: 0.30
+  vz_rate_limit: 0.20
+  yaw_rate_rate_limit: 20 # deg/s^2
+
+# SDK feedback for fixed-point hover.
+#
+# Mature hover rewards combine absolute tracking quality with improvement.  The
+# SDK only accepts one scalar, so reward_01 maps low hover cost to high reward
+# and blends in a smaller improvement term for online adaptation.
+feedback:
+  mode: "reward_01"           # 1.0 good hover, 0.0 terminal/bad state
+  neutral_value: 0.5
+  terminal_value: 0.0        # reset/flip terminal value
+  startup_warmup_frames: 10   # neutral feedback frames after startup/reset
+  feedback_amplitude: 0.45    # output range is roughly [0.05, 0.95]
+  improvement_scale: 0.04     # cost delta that maps near full feedback swing
+  cost_scale: 0.65            # absolute-cost reward scale for exp(-cost/scale)
+  improvement_weight: 0.10    # keep absolute hover quality dominant
+  cost_filter_alpha: 0.35     # smooth noisy MAVLink/Gazebo state before delta
+
+  # Normalization scales for cost terms.
+  xy_scale_m: 5.0
+  z_scale_m: 2.0
+  vxy_scale_mps: 1.0
+  vz_scale_mps: 0.7
+  tilt_scale_deg: 30.0
+  rate_scale_degps: 180.0
+  yaw_scale_deg: 45.0
+
+  # Cost weights.  Keep attitude/velocity visible so feedback catches flip or
+  # runaway before distance alone saturates.
+  xy_weight: 0.30
+  z_weight: 0.30
+  vxy_weight: 0.20
+  vz_weight: 0.20
+  tilt_weight: 0.16
+  rate_weight: 0.05
+  yaw_weight: 0.02
+  command_weight: 0.03
+  saturation_weight: 0.12
+  safety_weight: 0.25
+
+# X3 copter physical parameters (from model.sdf + ArduCopter config.h)
+copter:
+  hover_throttle: 700     # ArduCopter throttle value (0-1000), ~1700 PWM after X3 bridge PWM calibration
+  throttle_mid: 500       # THR_MID
+  throttle_min: 130       # minimum throttle
+  throttle_max: 1000      # maximum throttle
+  rc_altitude_kp_pwm_per_m: 80.0      # blunt altitude limiter: +PWM per meter below target
+  rc_vertical_speed_kd_pwm_per_mps: 50.0 # damp climb/descent before residuals tune fine behavior
+  rc_baseline_min_pwm: 1450            # allow descent when above target altitude
+  rc_baseline_max_pwm: 1800            # takeoff/climb cap; raised from 1740 to reach 3m target
+  rc_xy_kp_pwm_per_m: 10.0              # position pullback (sign fixed: now correct direction)
+  rc_xy_kd_pwm_per_mps: 50.0           # horizontal-speed damping
+  rc_xy_max_delta_pwm: 150              # roll/pitch authority
+  rc_xy_enable_alt_m: 0.0              # enable XY from frame 1
+  rc_xy_accel_kp_mps2_per_m: 0.12      # desired accel = -Kp*x_err - Kd*vx
+  rc_xy_accel_kd_mps2_per_mps: 0.28
+  rc_xy_max_accel_mps2: 0.45
+  # RC step-response matrix from tools/calibrate_rc_step_response.py:
+  # [ax, ay]^T = A @ [roll_delta_pwm, pitch_delta_pwm]^T
+  rc_response_ax_per_roll_pwm: 0.036431
+  rc_response_ay_per_roll_pwm: 0.010765
+  rc_response_ax_per_pitch_pwm: 0.001153
+  rc_response_ay_per_pitch_pwm: -0.011860
+  mass_kg: 1.5
+  max_motor_speed_radps: 800.0   # X3 maxRotVelocity
+  bridge_max_motor_speed: 800.0    # bridge internal max; matches X3 maxRotVelocity

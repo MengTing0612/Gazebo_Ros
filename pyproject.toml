@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flight-bridge"
+version = "0.1.0"
+description = "Shared SDK, observation, and safety components for the UAV control bridge"
+requires-python = ">=3.10"
+dependencies = ["PyYAML>=6.0"]
+
+[tool.setuptools]
+packages = ["flight_bridge"]
